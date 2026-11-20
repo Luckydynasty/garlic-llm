@@ -16,3 +16,6 @@ jobs:
       - name: Offline queue and recovery checks
         shell: powershell
         run: ./cluster/Test-Coordinator.ps1
+      - name: Streaming, context and two simulated nodes
+        shell: powershell
+        run: ./cluster/Test-Streaming.ps1

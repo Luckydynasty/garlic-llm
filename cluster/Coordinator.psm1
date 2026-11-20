@@ -16,7 +16,7 @@ function Read-ClusterNodes([string]$Config) {
         $n
     }
 }
-function Invoke-ClusterHttp($Node,[string]$Method,[string]$Path,[string]$Body='',[int]$Timeout=5) {
+function Invoke-ClusterHttp($Node,[string]$Method,[string]$Path,[string]$Body='',[int]$Timeout=5,[scriptblock]$OnProgress=$null) {
     $key=[Environment]::GetEnvironmentVariable($Node.keyEnvironment)
     if([string]::IsNullOrWhiteSpace($key)){throw 'Set the node API key environment variable before connecting.'}
     $request=[Net.HttpWebRequest]::Create("http://$($Node.address):$($Node.port)$Path")
@@ -30,8 +30,12 @@ function Invoke-ClusterHttp($Node,[string]$Method,[string]$Path,[string]$Body=''
     }
     $response=$request.GetResponse()
     try{
-        $reader=New-Object IO.StreamReader($response.GetResponseStream())
+        $reader=New-Object IO.StreamReader($response.GetResponseStream(),(New-Object Text.UTF8Encoding($false,$true)))
         try{
+            if($OnProgress){
+                if($response.ContentType -notlike 'text/event-stream*'){throw 'Expected SSE response.'}
+                return Read-ClusterSse $reader $OnProgress $Timeout
+            }
             $buffer=New-Object char[] 4096;$text=New-Object Text.StringBuilder
             $deadline=[datetime]::UtcNow.AddSeconds($Timeout)
             while(($read=$reader.Read($buffer,0,$buffer.Length)) -gt 0){
@@ -44,4 +48,5 @@ function Invoke-ClusterHttp($Node,[string]$Method,[string]$Path,[string]$Body=''
     finally{$response.Dispose()}
 }
 . (Join-Path $PSScriptRoot 'Queue.ps1')
-Export-ModuleMember -Function Read-ClusterNodes,Get-ClusterHealth,Invoke-ClusterJob,Submit-ClusterJob,Get-ClusterJobs,Invoke-ClusterWorker,Resolve-ClusterJob
+. (Join-Path $PSScriptRoot 'Streaming.ps1')
+Export-ModuleMember -Function Read-ClusterNodes,Get-ClusterHealth,Invoke-ClusterJob,Submit-ClusterJob,Get-ClusterJobs,Invoke-ClusterWorker,Resolve-ClusterJob,Get-ClusterProgress

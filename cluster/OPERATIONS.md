@@ -1,4 +1,28 @@
-# Durable queue: offline milestone
+# Durable queue, streaming and conversations
+
+## Streaming and conversation milestone
+
+```powershell
+$job = Submit-ClusterJob -Config .\nodes.local.json -NodeId ps4-pro `
+    -Prompt 'Explain proportional control.' -StateDirectory $state `
+    -ConversationId controls-demo -Stream
+# Run in a separate worker process, with the same absolute $state:
+Invoke-ClusterWorker -Config .\nodes.local.json -NodeId ps4-pro -StateDirectory $state
+# While it runs, poll from the controller:
+Get-ClusterProgress -StateDirectory $state -JobId $job.id
+```
+
+Streaming uses Garlic's documented SSE format, validates choice 0, accumulates Unicode text, and requires both a recognized finish reason and `[DONE]`. Premature EOF, invalid JSON, oversized lines/streams, or stream errors leave the job unknown. Progress files (`<job>.progress`) are atomically replaced; their text is partial until a completed job is saved. Readers can briefly see a sharing conflict while a replacement occurs; retry a read, never retry generation. Check the authoritative job record too: a worker crash can leave stale progress. Stream metadata such as usage counts is not reconstructed. No remote cancellation endpoint is added.
+
+Conversation IDs are local, case-insensitive labels (letters, numbers, hyphens). A subsequent turn sends every prior successful user/assistant pair plus the new prompt in one request. Completed turns can be routed explicitly to a different enrolled node. Different conversations never share messages. This is explicit full-history resubmission because Garlic resets console chat per API request. A conversation permits only one queued/running turn. Unknown/running/resolved turns block continuation; after manual reconciliation use a new ID to avoid silently dropping an uncertain exchange. Cancelled unsent turns do not enter context. Conversations have no system-prompt editor, branching UI or summary compaction yet.
+
+The default context budget is **4096 tokens**, conservatively bounded by UTF-8 content bytes + 32 template tokens per message + 64 reserved tokens + requested output tokens. This is an intentionally restrictive upper-bound estimate for the current byte-based tokenizer path, not exact token counting. Set optional integer `contextTokens` (1024–16384) on a node only after verifying its actual context capacity. Validation occurs before queueing and again before dispatch against the current node budget. Oversized requests are refused with no history truncation. Sessions with long answers will reach this conservative limit earlier than exact tokenization would. A lower-memory or different model requires deliberate configuration and qualification.
+
+Jobs remain schema 2 with optional `messages`, `conversation`, and `streaming` fields; previously queued schema-2 jobs work as one-turn, non-streamed requests, subject to the new budget checks. Progress and job files contain private text and should be backed up/protected together. Streaming writes a complete accumulated progress snapshot on each content event, so high-throughput use needs future throttling before large-scale deployment.
+
+Offline validation uses two separate PowerShell worker processes, synthetic SSE readers, a barrier requiring both mock transports to be active simultaneously, and checks per-node Unicode results/progress. Tests also cover missing DONE, oversized SSE lines, history carryover across nodes, pending-turn isolation, and pre-dispatch budget refusal. This does not qualify real sockets, physical consoles, or their performance; a network-level mock server and PS4 API qualification remain future integration gates.
+
+The guidance below describes the underlying queue and recovery behavior; the earlier statement that streaming was pending is superseded by this milestone. Exact tokenizer/context optimization and API hardware validation remain pending.
 
 This development version uses schema 2. It has been tested with mock transports on Windows PowerShell 5.1, including a separate process holding an endpoint lock. Physical console/API qualification is still required before enrollment. No service or listener is installed.
 
