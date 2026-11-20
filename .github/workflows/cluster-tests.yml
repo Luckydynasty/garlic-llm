@@ -1,0 +1,18 @@
+name: Cluster coordinator offline checks
+on:
+  push:
+    paths: ['cluster/**', '.github/workflows/cluster-tests.yml']
+  pull_request:
+    paths: ['cluster/**', '.github/workflows/cluster-tests.yml']
+permissions:
+  contents: read
+jobs:
+  windows-powershell:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Offline queue and recovery checks
+        shell: powershell
+        run: ./cluster/Test-Coordinator.ps1

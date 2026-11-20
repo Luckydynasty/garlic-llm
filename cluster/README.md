@@ -1,5 +1,7 @@
 # Garlic cluster pre-development
 
+**Hardening update:** The branch is published at [Luckydynasty/garlic-llm](https://github.com/Luckydynasty/garlic-llm/tree/cluster/predevelopment/cluster). The coordinator now provides a durable FIFO queue, explicit reconciliation with audit events, endpoint file locks across Windows sessions, and atomic record replacement. Read [OPERATIONS.md](OPERATIONS.md) for the current commands, schema-2 migration and limitations. Earlier prototype descriptions below are historical where they differ (especially mutexes, health signature and Invoke-ClusterJob's result). Console/API qualification is still pending.
+
 Local development branch `cluster/predevelopment`, based on upstream commit `22bb871a1ad3583624b910068e3d5822d9ded99d`, inspected November 20, 2026. This is a coordinator prototype, not a production cluster or a published GitHub fork. No console code, firmware, installed Windows client, or network settings were changed.
 
 ## New upstream evidence
