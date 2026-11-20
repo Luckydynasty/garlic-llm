@@ -1,0 +1,6 @@
+{
+  "nodes": [
+    {"id":"ps4-reference","address":"192.168.77.2","port":8080,"enabled":false,"apiVerified":false,"keyEnvironment":"GARLIC_REFERENCE_KEY"},
+    {"id":"ps4-pro","address":"192.168.77.3","port":8080,"enabled":false,"apiVerified":false,"keyEnvironment":"GARLIC_PRO_KEY"}
+  ]
+}

@@ -9,3 +9,6 @@ toolchain/
 models/
 third_party/
 pc/fonts_libres/
+cluster/nodes.local.json
+cluster/state/
+cluster/*.key
