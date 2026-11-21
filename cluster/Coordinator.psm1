@@ -16,37 +16,7 @@ function Read-ClusterNodes([string]$Config) {
         $n
     }
 }
-function Invoke-ClusterHttp($Node,[string]$Method,[string]$Path,[string]$Body='',[int]$Timeout=5,[scriptblock]$OnProgress=$null) {
-    $key=[Environment]::GetEnvironmentVariable($Node.keyEnvironment)
-    if([string]::IsNullOrWhiteSpace($key)){throw 'Set the node API key environment variable before connecting.'}
-    $request=[Net.HttpWebRequest]::Create("http://$($Node.address):$($Node.port)$Path")
-    $request.Proxy=$null; $request.AllowAutoRedirect=$false; $request.Method=$Method
-    $request.Timeout=$Timeout*1000; $request.ReadWriteTimeout=$Timeout*1000
-    $request.Headers['Authorization']='Bearer '+$key
-    if($Method -eq 'POST'){
-        $bytes=[Text.Encoding]::UTF8.GetBytes($Body)
-        $request.ContentType='application/json';$request.ContentLength=$bytes.Length
-        $stream=$request.GetRequestStream();try{$stream.Write($bytes,0,$bytes.Length)}finally{$stream.Dispose()}
-    }
-    $response=$request.GetResponse()
-    try{
-        $reader=New-Object IO.StreamReader($response.GetResponseStream(),(New-Object Text.UTF8Encoding($false,$true)))
-        try{
-            if($OnProgress){
-                if($response.ContentType -notlike 'text/event-stream*'){throw 'Expected SSE response.'}
-                return Read-ClusterSse $reader $OnProgress $Timeout
-            }
-            $buffer=New-Object char[] 4096;$text=New-Object Text.StringBuilder
-            $deadline=[datetime]::UtcNow.AddSeconds($Timeout)
-            while(($read=$reader.Read($buffer,0,$buffer.Length)) -gt 0){
-                if($text.Length+$read -gt 2097152 -or [datetime]::UtcNow -gt $deadline){throw 'Response exceeds read limits.'}
-                $null=$text.Append($buffer,0,$read)
-            }
-            $text.ToString() | ConvertFrom-Json
-        }finally{$reader.Dispose()}
-    }
-    finally{$response.Dispose()}
-}
+. (Join-Path $PSScriptRoot 'Http.ps1')
 . (Join-Path $PSScriptRoot 'Queue.ps1')
 . (Join-Path $PSScriptRoot 'Streaming.ps1')
 Export-ModuleMember -Function Read-ClusterNodes,Get-ClusterHealth,Invoke-ClusterJob,Submit-ClusterJob,Get-ClusterJobs,Invoke-ClusterWorker,Resolve-ClusterJob,Get-ClusterProgress

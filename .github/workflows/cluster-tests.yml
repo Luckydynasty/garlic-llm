@@ -19,3 +19,6 @@ jobs:
       - name: Streaming, context and two simulated nodes
         shell: powershell
         run: ./cluster/Test-Streaming.ps1
+      - name: Real HTTP streaming and failure recovery
+        shell: powershell
+        run: ./cluster/Test-Network.ps1

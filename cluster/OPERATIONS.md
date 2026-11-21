@@ -1,5 +1,15 @@
 # Durable queue, streaming and conversations
 
+## Network simulation milestone
+
+`Test-Network.ps1` starts two synthetic Node.js HTTP servers on **127.0.0.1 only**, using ephemeral ports and a fixture key. It stops the server process in its cleanup block. Node.js must be on PATH to run this test; the production coordinator still needs only Windows PowerShell/.NET. No administrator HTTP URL reservation or firewall opening is needed. The test module instance bypasses enrollment solely for fixture queue tests; shipped `Read-ClusterNodes` still rejects loopback and non-8080 production endpoints. It does not connect to PS4s.
+
+Verified over actual HTTP sockets: chunked SSE with bytes split through multi-byte Unicode characters, incremental callbacks before completion, two server requests active simultaneously with distinct answers, missing completion after a socket drop, invalid UTF-8, 401, 503, redirects (not followed), header stalls, body stalls, and continuous heartbeat trickle. Queue integration verifies a dropped stream preserves partial progress, becomes unknown, blocks replay, and permits an explicitly reconciled new job to succeed.
+
+Transport hardening: a small compiled .NET helper (`HttpDeadline.cs`, loaded on module import) aborts the HTTP request at its overall timeout, including request upload, response headers and blocked body reads. Per-read socket timeouts remain as a second bound. This fixes the earlier between-chunk elapsed check, which could not independently interrupt a blocked read or perpetual trickle. Timer scheduling is subject to OS scheduling; test tolerance is six seconds for a one-second timeout. The worker exposes `-TimeoutSeconds` (1–600, default 180). Whole responses require JSON content type and HTTP 200; streams require SSE content type. Redirects and error responses are rejected, and response resources are disposed. No retry semantics change: failures after dispatch remain conservatively unknown.
+
+Run all three suites in order: `Test-Coordinator.ps1`, `Test-Streaming.ps1`, `Test-Network.ps1`. GitHub Windows CI runs all three. Loopback does not reproduce PS4-specific socket implementations, performance, restarts or LAN loss; physical API qualification remains required.
+
 ## Streaming and conversation milestone
 
 ```powershell
@@ -64,7 +74,7 @@ Writes use a flushed temporary file and atomic replacement; an interrupted write
 
 **Migration:** the earlier prototype wrote unversioned records. These fail closed in the new reader. Before adopting this version, inspect every prior running/unknown job against its console and archive the old store as read-only. Start schema 2 in the designated canonical store only after every old request is accounted for. There is intentionally no destructive automatic migration.
 
-API errors/timeouts/malformed responses conservatively become unknown. Missing local keys leave queued jobs unsent. Health results do not prove engine readiness and avoid probing a locally owned endpoint. HTTP auth remains plaintext over the dedicated isolated cable/switch; no network exposure is added. Response reads are bounded to roughly 2 million decoded characters, with socket timeouts and elapsed-time checks between chunks; this is not a strict end-to-end wall-clock deadline. The full-history/context and SSE streaming milestones remain pending.
+API errors/timeouts/malformed responses conservatively become unknown. Missing local keys leave queued jobs unsent. Health results do not prove engine readiness and avoid probing a locally owned endpoint. HTTP auth remains plaintext over the dedicated isolated cable/switch; no network exposure is added. Response reads are bounded to roughly 2 million decoded characters and request-wide timeout abortion as described above. Physical context/tokenizer qualification remains pending; full-history resubmission and SSE are implemented in the current prototype.
 
 `Invoke-ClusterJob` is a convenience wrapper returning both `SubmittedJob` and `ProcessedJob`: the worker processes the oldest queued request, which can differ from the just-submitted one. New integrations should use the explicit queue commands above.
 

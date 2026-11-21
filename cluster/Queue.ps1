@@ -61,7 +61,7 @@ function Submit-ClusterJob([string]$Config,[string]$NodeId,[string]$Prompt,[stri
         return $job
     }finally{$lock.Dispose()}
 }
-function Invoke-ClusterWorker([string]$Config,[string]$NodeId,[string]$StateDirectory) {
+function Invoke-ClusterWorker([string]$Config,[string]$NodeId,[string]$StateDirectory,[ValidateRange(1,600)][int]$TimeoutSeconds=180) {
     $nodes=@(Read-ClusterNodes $Config | Where-Object id -eq $NodeId)
     if($nodes.Count -ne 1 -or -not $nodes[0].enabled -or -not $nodes[0].apiVerified){throw 'Node not enrolled.'}
     $n=$nodes[0];$dir=Initialize-ClusterStore $StateDirectory
@@ -99,7 +99,7 @@ function Invoke-ClusterWorker([string]$Config,[string]$NodeId,[string]$StateDire
             if($streaming){
                 $progress={param($text) Write-ClusterRecord @{job=$job.id;node=$job.node;partial=$true;text=$text;checked=[datetime]::UtcNow.ToString('o')} (Join-Path $dir ($job.id+'.progress'))}
             }
-            $answer=Invoke-ClusterHttp $n POST '/v1/chat/completions' $body 180 $progress
+            $answer=Invoke-ClusterHttp $n POST '/v1/chat/completions' $body $TimeoutSeconds $progress
             if(-not $answer.choices -or $answer.choices.Count -ne 1 -or $answer.choices[0].message.content -isnot [string] -or $answer.choices[0].finish_reason -notin @('stop','length')){throw 'Invalid completion.'}
             $job.response=$answer;Add-ClusterEvent $job succeeded 'Response received; length may mean token limit or controller stop.'
         }catch{Add-ClusterEvent $job unknown 'Delivery/completion uncertain. No retry. Inspect console before resolution.'}

@@ -1,5 +1,7 @@
 # Garlic cluster pre-development
 
+**HTTP qualification update:** Two loopback simulated Garlic servers now exercise real chunked HTTP streaming, fragmented Unicode, simultaneous requests, stalls/trickle deadlines, disconnect recovery and authentication/error/redirect rejection. The request-wide abort deadline fixes the earlier reliance on per-read timeouts. See [OPERATIONS.md](OPERATIONS.md). Requires Node.js for network tests only; no console was contacted or updated.
+
 **Streaming/conversation update:** Optional `-Stream` now validates SSE completion and saves per-job progress. `-ConversationId` resubmits completed turns with conservative context admission checks. Two separate simulated node workers have been exercised concurrently, including Unicode results and conversation isolation. See [OPERATIONS.md](OPERATIONS.md) for usage and limits. Real console/socket qualification is still pending.
 
 **Hardening update:** The branch is published at [Luckydynasty/garlic-llm](https://github.com/Luckydynasty/garlic-llm/tree/cluster/predevelopment/cluster). The coordinator now provides a durable FIFO queue, explicit reconciliation with audit events, endpoint file locks across Windows sessions, and atomic record replacement. Read [OPERATIONS.md](OPERATIONS.md) for the current commands, schema-2 migration and limitations. Earlier prototype descriptions below are historical where they differ (especially mutexes, health signature and Invoke-ClusterJob's result). Console/API qualification is still pending.
