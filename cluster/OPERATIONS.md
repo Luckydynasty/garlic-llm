@@ -1,5 +1,9 @@
 # Durable queue, streaming and conversations
 
+## Endpoint identity hardening
+
+Node addresses must exactly match the canonical dotted-decimal spelling returned by .NET, and port 8080 must be a JSON integer. Alternate address spellings such as `192.168.77.003` and string ports such as `"08080"` are rejected before submission or dispatch. Some network parsers treat these as the same endpoint, while the coordinator's lock filenames and job records use their configured spelling. Rejecting aliases prevents a renamed node from acquiring a second lock identity or bypassing unresolved-delivery protection. The dedicated-subnet restriction remains in place. `Test-Coordinator.ps1` covers aliases, valid canonical endpoints, and attempted alias dispatch while an unresolved job exists.
+
 ## Network simulation milestone
 
 `Test-Network.ps1` starts two synthetic Node.js HTTP servers on **127.0.0.1 only**, using ephemeral ports and a fixture key. It stops the server process in its cleanup block. Node.js must be on PATH to run this test; the production coordinator still needs only Windows PowerShell/.NET. No administrator HTTP URL reservation or firewall opening is needed. The test module instance bypasses enrollment solely for fixture queue tests; shipped `Read-ClusterNodes` still rejects loopback and non-8080 production endpoints. It does not connect to PS4s.

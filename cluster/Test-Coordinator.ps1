@@ -11,6 +11,17 @@ $module=Get-Module Coordinator
 function Assert($Condition,$Message){if(-not $Condition){throw $Message}}
 function Assert-Blocked([scriptblock]$Code,$Message){$blocked=$false;try{& $Code | Out-Null}catch{$blocked=$true};Assert $blocked $Message}
 try{
+    foreach($alias in @('192.168.77.003','192.168.77.0x3','192.168.77.3 ')){
+        $node.address=$alias;Save-Config
+        Assert-Blocked {Read-ClusterNodes $config} 'Alternate IPv4 spelling allowed a second endpoint identity.'
+    }
+    $node.address='192.168.77.3'
+    foreach($alias in @('8080','08080',8080.5)){
+        $node.port=$alias;Save-Config
+        Assert-Blocked {Read-ClusterNodes $config} 'Non-integer port allowed a second endpoint identity.'
+    }
+    $node.port=8080;Save-Config
+    Assert (@(Read-ClusterNodes $config).Count -eq 1) 'Canonical endpoint was rejected.'
     & $module { function script:Invoke-ClusterHttp {param($Node,$Method,$Path,$Body,$Timeout);[pscustomobject]@{choices=@(@{message=@{content='Unicode answer: cafe'};finish_reason='stop'})}} }
     $store=Join-Path $root 'state'
     $a=Submit-ClusterJob $config test-node 'first' $store
@@ -41,6 +52,8 @@ try{
     $path=Join-Path $store ($c.id+'.json');$record.state='running';$record | ConvertTo-Json -Depth 15 | Set-Content $path
     $node.id='renamed';Save-Config
     Assert-Blocked {Invoke-ClusterWorker $config renamed $store} 'Renamed endpoint bypassed recovery gate.'
+    $node.address='192.168.77.003';Save-Config
+    Assert-Blocked {Invoke-ClusterWorker $config renamed $store} 'Endpoint alias bypassed unresolved work.'
     $node.id='test-node';$node.address='192.168.77.4';Save-Config
     Assert-Blocked {Invoke-ClusterWorker $config test-node $store} 'Node relocation bypassed unresolved work.'
     $node.address='192.168.77.3';Save-Config

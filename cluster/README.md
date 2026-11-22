@@ -1,5 +1,7 @@
 # Garlic cluster pre-development
 
+**Endpoint identity update:** Enrollment now rejects alternate IPv4 spellings and non-integer ports before queueing or dispatch, preventing aliases of one console from acquiring different lock identities. Regression tests cover attempted alias use with unresolved work. Network isolation and no-replay rules are unchanged. See [OPERATIONS.md](OPERATIONS.md).
+
 **HTTP qualification update:** Two loopback simulated Garlic servers now exercise real chunked HTTP streaming, fragmented Unicode, simultaneous requests, stalls/trickle deadlines, disconnect recovery and authentication/error/redirect rejection. The request-wide abort deadline fixes the earlier reliance on per-read timeouts. See [OPERATIONS.md](OPERATIONS.md). Requires Node.js for network tests only; no console was contacted or updated.
 
 **Streaming/conversation update:** Optional `-Stream` now validates SSE completion and saves per-job progress. `-ConversationId` resubmits completed turns with conservative context admission checks. Two separate simulated node workers have been exercised concurrently, including Unicode results and conversation isolation. See [OPERATIONS.md](OPERATIONS.md) for usage and limits. Real console/socket qualification is still pending.
